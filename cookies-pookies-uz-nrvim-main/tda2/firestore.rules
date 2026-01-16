@@ -1,0 +1,19 @@
+// doporučená Firestore rules (role-based). Nasadit v konzoli Firebase → Firestore → Rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // veřejné čtení kurzů
+    match /courses/{courseId} {
+      allow read: if true;
+      // create/update/delete jen pro autentizované uživatele s custom claim role == "teacher"
+      allow create: if request.auth != null && request.auth.token.role == 'teacher';
+      allow update, delete: if request.auth != null && request.auth.token.role == 'teacher';
+    }
+
+    // fallback - ostatní kolekce blokovat (explicitní deny)
+    match /{document=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}

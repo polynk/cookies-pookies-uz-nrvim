@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail kurzu | Think Different Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --mint: #91f5ad; --blue: #0070bb; --black: #1a1a1a; --white: #ffffff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Dosis', sans-serif; }
+        body { background-color: var(--black); color: var(--white); line-height: 1.6; }
+        header { padding: 1.5rem 5%; display: flex; justify-content: space-between; align-items: center; background: rgba(26, 26, 26, 0.9); border-bottom: 1px solid rgba(255, 255, 255, 0.05); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .logo { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--mint); padding-left: 15px; text-decoration: none; color: white; }
+        .container { max-width: 900px; margin: 60px auto; padding: 0 5%; }
+        .detail-card { background: #222; border-radius: 40px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 40px; }
+        .btn-action { display: inline-block; background: var(--blue); color: white; padding: 1rem 3rem; border-radius: 50px; text-decoration: none; font-weight: 800; text-transform: uppercase; margin-top: 20px; cursor: pointer; border: none; }
+        .materials-section, .quiz-section { margin-top: 40px; padding: 40px; background: rgba(255,255,255,0.03); border-radius: 30px; border: 1px solid rgba(255,255,255,0.05); }
+        h2 { color: var(--mint); text-transform: uppercase; margin-bottom: 30px; font-weight: 800; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: #1a1a1a; padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); text-decoration: none; color: white; }
+        .quiz-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; padding: 20px; }
+        .quiz-content { background: #222; padding: 40px; border-radius: 30px; width: 100%; max-width: 600px; }
+        .question { margin-bottom: 30px; }
+        .option { display: block; background: #333; padding: 15px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; }
+        .option.selected { background: var(--blue); }
+    </style>
+</head>
+<body>
+    <header><a href="../../index.html" class="logo"><div>THINK<span> DIFFERENT</span></div></a></header>
+    <div class="container" id="content">Načítám...</div>
+    <div id="quizModal" class="quiz-modal"><div class="quiz-content" id="quizContainer"></div></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0DuW-YyRECVCUppGZ5mjbdKiwF16Or74",
+            authDomain: "weblearning-1b052.firebaseapp.com",
+            databaseURL: "https://weblearning-1b052-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "weblearning-1b052",
+            storageBucket: "weblearning-1b052.firebasestorage.app",
+            messagingSenderId: "913379547857",
+            appId: "1:913379547857:web:f1dd5ac136b90f8ae7c3f0",
+            measurementId: "G-8KDQYM6DR5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let courseId = new URLSearchParams(window.location.search).get('id');
+
+        async function load() {
+            if (!courseId) {
+                const s = await db.ref('courses').once('value');
+                s.forEach(c => { if (c.val().title.toLowerCase().includes('web')) courseId = c.key; });
+            }
+            if (!courseId) return;
+            const snapshot = await db.ref(`courses/${courseId}`).once('value');
+            const c = snapshot.val();
+            document.getElementById('content').innerHTML = `
+                <div class="detail-card"><h1>${c.title}</h1><p>${c.desc}</p></div>
+                <div class="materials-section"><h2>Podklady</h2><div id="mList" class="grid"></div></div>
+                <div class="quiz-section"><h2>Kvízy</h2><div id="qList" class="grid"></div></div>
+            `;
+            loadMats(); loadQuizzes();
+        }
+
+        async function loadMats() {
+            const s = await db.ref(`courses/${courseId}/materials`).once('value');
+            const list = document.getElementById('mList');
+            s.forEach(child => {
+                const m = child.val();
+                list.innerHTML += `<a href="${m.url}" target="_blank" class="card"><h3>${m.name}</h3><p>${m.desc}</p></a>`;
+            });
+        }
+
+        async function loadQuizzes() {
+            const s = await db.ref(`courses/${courseId}/quizzes`).once('value');
+            const list = document.getElementById('qList');
+            s.forEach(child => {
+                const q = child.val();
+                list.innerHTML += `<div class="card" onclick="startQuiz('${child.key}')"><h3>${q.title}</h3><button class="btn-action" style="padding:10px 20px; font-size:0.8rem">Spustit</button></div>`;
+            });
+        }
+
+        let quizData = null;
+        let currentAnswers = [];
+        async function startQuiz(id) {
+            const s = await db.ref(`courses/${courseId}/quizzes/${id}`).once('value');
+            quizData = s.val(); quizData.id = id;
+            currentAnswers = quizData.questions.map(() => []);
+            renderQuizPage(0);
+            document.getElementById('quizModal').style.display = 'flex';
+        }
+
+        function renderQuizPage(qIdx) {
+            const q = quizData.questions[qIdx];
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = `
+                <h2>${quizData.title} (${qIdx+1}/${quizData.questions.length})</h2>
+                <div class="question"><h3>${q.text}</h3><div style="margin-top:20px">
+                    ${q.options.map((opt, oIdx) => `
+                        <div class="option ${currentAnswers[qIdx].includes(oIdx) ? 'selected' : ''}" onclick="toggleOption(${qIdx}, ${oIdx})">${opt}</div>
+                    `).join('')}
+                </div></div>
+                <div style="display:flex; gap:10px">
+                    ${qIdx > 0 ? `<button onclick="renderQuizPage(${qIdx-1})" class="btn-action">Zpět</button>` : ''}
+                    ${qIdx < quizData.questions.length - 1 ? `<button onclick="renderQuizPage(${qIdx+1})" class="btn-action">Další</button>` : `<button onclick="finishQuiz()" class="btn-action">Dokončit</button>`}
+                </div>
+            `;
+        }
+
+        function toggleOption(qIdx, oIdx) {
+            const q = quizData.questions[qIdx];
+            if (q.type === 'single') currentAnswers[qIdx] = [oIdx];
+            else {
+                if (currentAnswers[qIdx].includes(oIdx)) currentAnswers[qIdx] = currentAnswers[qIdx].filter(i => i !== oIdx);
+                else currentAnswers[qIdx].push(oIdx);
+            }
+            renderQuizPage(qIdx);
+        }
+
+        async function finishQuiz() {
+            let score = 0;
+            quizData.questions.forEach((q, i) => {
+                if (JSON.stringify(q.correct.sort()) === JSON.stringify(currentAnswers[i].sort())) score++;
+            });
+            document.getElementById('quizContainer').innerHTML = `
+                <h2>Výsledek: ${score}/${quizData.questions.length}</h2>
+                <button onclick="document.getElementById('quizModal').style.display='none'" class="btn-action">Zavřít</button>
+            `;
+            await db.ref(`courses/${courseId}/results`).push({ quizId: quizData.id, score, total: quizData.questions.length, createdAt: Date.now() });
+        }
+        load();
+    </script>
+</body>
+</html>
