@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /courses/{courseId} {
+      allow read: if true; // veřejné čtení kurzů
+      allow create: if request.auth != null && request.auth.token.role == 'teacher';
+      allow update, delete: if request.auth != null && request.auth.token.role == 'teacher';
+
+      // feed subcollection
+      match /feed/{feedId} {
+        allow read: if true; // veřejné čtení feedu
+        allow create, update, delete: if request.auth != null && request.auth.token.role == 'teacher';
+      }
+    }
+
+    // ostatní kolekce - explicitně zablokovat
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

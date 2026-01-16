@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Administrace | Think Different Academy</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <script> if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html'; </script>
+  <header>
+    <h1>Správa kurzů</h1>
+    <button onclick="logout()" class="btn btn-logout">Odhlásit se</button>
+  </header>
+
+  <button onclick="openModal()" class="btn btn-add">Přidat nový kurz</button>
+
+  <table id="courseTable">
+    <thead>
+      <tr><th>Název</th><th>Kategorie</th><th>Akce</th></tr>
+    </thead>
+    <tbody id="courseBody"></tbody>
+  </table>
+
+  <div id="courseModal" class="modal">
+    <div class="modal-content">
+      <h2 id="modalTitle">Přidat kurz</h2>
+      <form id="courseForm">
+        <input type="hidden" id="courseId">
+        <div class="input-group"><label>Název</label><input type="text" id="title" required></div>
+        <div class="input-group"><label>Popisek</label><textarea id="desc" rows="3" required></textarea></div>
+        <div class="input-group"><label>Kategorie</label><input type="text" id="cat" required></div>
+        <div class="input-group"><label>Cena</label><input type="text" id="price" placeholder="např. 149 Kč"></div>
+        <div class="input-group"><label>Detaily kurzu</label><textarea id="details" rows="4"></textarea></div>
+        <div class="input-group"><label>Obrázek kurzu (thumbnail)</label><input type="file" id="imgFile" accept="image/*"></div>
+        <div class="input-group"><label>Studijní soubory (můžete vybrat více)</label><input type="file" id="attachments" multiple></div>
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-add" style="flex:1;">Uložit</button>
+          <button type="button" onclick="closeModal()" class="btn btn-logout" style="flex:1;">Zrušit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Feed modal (teacher) -->
+  <div id="feedModal" class="modal">
+    <div class="modal-content">
+      <h2>Správa kanálu kurzu</h2>
+      <input type="hidden" id="feedCourseId">
+      <div class="input-group">
+        <label>Přidat příspěvek</label>
+        <textarea id="feedText" rows="3"></textarea>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button onclick="addFeedPost()" class="btn btn-add">Přidat</button>
+          <button onclick="document.getElementById('feedModal').style.display='none';" class="btn btn-logout">Zavřít</button>
+        </div>
+      </div>
+      <h3>Příspěvky</h3>
+      <ul id="feedList" style="list-style:none;padding:0;"></ul>
+    </div>
+  </div>
+
+  <script>
+    function logout() { localStorage.removeItem('isLoggedIn'); window.location.href = 'login.html'; }
+    window.logout = logout;
+  </script>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>
